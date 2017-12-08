@@ -1,4 +1,6 @@
-
+const losingSound = new Audio(
+  "http://www.music-note.jp/bgm/mp3/20130312/carnival.MP3"
+);
 const canvas = document.querySelector("canvas");
 const ctx = canvas.getContext("2d");
 const progressBar = document.querySelector("meter");
@@ -6,6 +8,10 @@ const buttonWidth = 140;
 const buttonHeight = 35;
 const buttonX = canvas.width / 2 - buttonWidth / 2;
 const buttonY = canvas.height / 2 + buttonHeight;
+const minSpeed = 0.02;
+const maxSpeed = 0.045;
+const minRadius = 15;
+const maxRadius = 20;
 
 let timer = 0;
 let score = 0;
@@ -51,10 +57,36 @@ class Enemy extends Sprite {
 }
 
 let enemies = [
-  new Enemy(80, 200, 20, "rgba(250, 0, 50, 0.8)", 0.042),
-  new Enemy(200, 250, 17, "rgba(200, 100, 0, 0.7)", 0.03),
-  new Enemy(150, 180, 22, "rgba(50, 10, 70, 0.5)", 0.02)
+  new Enemy(80, 200, 20, randomColor(), 0.042),
+  new Enemy(80, 200, 17, randomColor(), 0.03),
+  new Enemy(150, 180, 22, randomColor(), 0.02)
 ];
+
+function randomPoint() {
+  return Math.random() * canvas.width;
+}
+
+function randomSpeed() {
+  return Math.random() * maxSpeed + minSpeed;
+}
+
+function randomRadius() {
+  return Math.random() * maxRadius + minRadius;
+}
+
+function spawnEnemies() {
+  if (score % 2 === 0) {
+    enemies.push(
+      new Enemy(
+        randomPoint(),
+        randomPoint(),
+        randomRadius(),
+        randomColor(),
+        randomSpeed()
+      )
+    );
+  }
+}
 
 let mouse = { x: 0, y: 0 };
 document.body.addEventListener("mousemove", updateMouse);
@@ -69,12 +101,33 @@ function moveToward(leader, follower, speed) {
   follower.y += (leader.y - follower.y) * speed;
 }
 
+function pushOff(c1, c2) {
+  let [dx, dy] = [c2.x - c1.x, c2.y - c1.y];
+  const L = Math.hypot(dx, dy);
+  let distToMove = c1.radius + c2.radius - L;
+  if (distToMove > 0) {
+    dx /= L;
+    dy /= L;
+    c1.x -= dx * distToMove / 2;
+    c1.y -= dy * distToMove / 2;
+    c2.x += dx * distToMove / 2;
+    c2.y += dy * distToMove / 2;
+  }
+}
+
 function updateScene() {
   moveToward(mouse, player, player.speed);
   enemies.forEach(enemy => moveToward(player, enemy, enemy.speed));
+  enemies.forEach((enemy, i) => {
+    enemies.forEach((other, k) => {
+      if (i != k) {
+        pushOff(enemy, other);
+      }
+    });
+  });
   enemies.forEach(enemy => {
     if (haveCollided(enemy, player)) {
-      progressBar.value -= 2;
+      progressBar.value -= 1;
     }
   });
   document.getElementById("score").innerHTML = score;
@@ -93,6 +146,7 @@ function setColor() {
 function gameOver() {
   if (progressBar.value <= 0) {
     setColor();
+    losingSound.play();
     ctx.font = "30px Bungee Inline";
     ctx.fillStyle = "#ccccff";
     ctx.textAlign = "center";
@@ -109,34 +163,21 @@ function gameOver() {
       );
       this.click = function() {
         console.log("clicked");
-      }
+      };
     };
     function init() {
-        var button = new Button(
-          buttonX,
-          buttonY,
-          buttonWidth,
-          buttonHeight
-        );
-        }
+      var button = new Button(buttonX, buttonY, buttonWidth, buttonHeight);
+    }
 
-    $('document').ready(() => {
+    $("document").ready(() => {
       init();
-    })
-
-   } else {
-     requestAnimationFrame(drawScene);
+    });
+  } else {
+    requestAnimationFrame(drawScene);
   }
 }
 
-window.addEventListener("keyup", function(e) {
-  console.log(e.keyCode);
-  if (e.keyCode === 32) {
-    isPaused = !isPaused;
-  }
-});
-
-$("#canvas").click((e) => {
+$("#canvas").click(e => {
   console.log(canvas);
   if (progressBar.value > 0) {
     return;
@@ -153,22 +194,30 @@ $("#canvas").click((e) => {
 });
 
 function restartGame() {
+  losingSound.pause();
+  losingSound.currentTime = 0;
   player = new Player(250, 150, 15, "lemonchiffon", 0.07);
   enemies = [
-  new Enemy(80, 200, 20, "rgba(250, 0, 50, 0.8)", 0.042),
-  new Enemy(200, 250, 17, "rgba(200, 100, 0, 0.7)", 0.03),
-  new Enemy(150, 180, 22, "rgba(50, 10, 70, 0.5)", 0.02)
-];
+    new Enemy(80, 200, 20, "rgba(250, 0, 50, 0.8)", 0.042),
+    new Enemy(200, 250, 17, "rgba(200, 100, 0, 0.7)", 0.03),
+    new Enemy(150, 180, 22, "rgba(50, 10, 70, 0.5)", 0.02)
+  ];
   progressBar.value = 100;
 
   requestAnimationFrame(drawScene);
-
 }
+
+window.addEventListener("keyup", function(e) {
+  if (e.keyCode === 32) {
+    isPaused = !isPaused;
+  }
+});
 
 function drawScene() {
   if (isPaused) {
     requestAnimationFrame(drawScene);
     ctx.textAlign = "center";
+    ctx.fillStyle = "#363066";
     ctx.fillText("PAUSED", canvas.width / 2, canvas.height / 2);
     ctx.font = "40px 'VT323'";
   } else {
@@ -180,6 +229,7 @@ function drawScene() {
     timer++;
     if (timer % 100 === 0) {
       score++;
+      spawnEnemies();
     }
   }
 }
