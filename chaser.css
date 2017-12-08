@@ -1,0 +1,32 @@
+#health {
+  text-align:center;
+  font-family: 'VT323', monospace;
+}
+
+meter {
+  width: 380px;
+  height: 25px;
+}
+
+canvas {
+  margin-top: 10px;
+  display: block;
+  margin: 0 auto;
+}
+
+
+h1 {
+  font: 50px 'Germania One';
+  text-align:center;
+}
+
+body {
+  margin-top: 0;
+  padding-left: 20px;
+}
+
+p{
+  text-align:center;
+  font-family: 'VT323', monospace;
+  font-size: 20px;
+}
